@@ -16,37 +16,51 @@ const app = express();
 
 app.set('trust proxy', 1);
 
-// =========================
-// SECURITY
-// =========================
-app.use(helmet());
-
-// =========================
+// ===============================
 // CORS
-// =========================
+// ===============================
+const allowedOrigins = env.CLIENT_URL
+  .split(',')
+  .map((origin) => origin.trim())
+  .filter(Boolean);
+
 app.use(
   cors({
-    origin: env.CLIENT_URL.split(',').map((s) => s.trim()),
+    origin: (origin, callback) => {
+      // Allow Postman / server-to-server requests
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      return callback(null, false);
+    },
     credentials: true,
   })
 );
 
-// =========================
+// ===============================
+// SECURITY
+// ===============================
+app.use(helmet());
+
+// ===============================
 // BODY PARSER
-// =========================
+// ===============================
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// =========================
+// ===============================
 // LOGGER
-// =========================
-if (env.NODE_ENV === 'development') {
-  app.use(morgan('dev'));
-}
+// ===============================
+app.use(morgan(env.NODE_ENV === 'development' ? 'dev' : 'combined'));
 
-// =========================
+// ===============================
 // RATE LIMIT
-// =========================
+// ===============================
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 300,
@@ -56,9 +70,9 @@ const limiter = rateLimit({
 
 app.use('/api', limiter);
 
-// =========================
+// ===============================
 // ROOT ROUTE
-// =========================
+// ===============================
 app.get('/', (req, res) => {
   res.status(200).json({
     success: true,
@@ -66,9 +80,9 @@ app.get('/', (req, res) => {
   });
 });
 
-// =========================
+// ===============================
 // HEALTH CHECK
-// =========================
+// ===============================
 app.get('/api/health', (req, res) => {
   res.status(200).json({
     success: true,
@@ -77,21 +91,21 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// =========================
+// ===============================
 // API ROUTES
-// =========================
+// ===============================
 app.use('/api/auth', authRoutes);
 app.use('/api/blogs', blogRoutes);
 app.use('/api/admin', adminRoutes);
 
-// =========================
+// ===============================
 // 404 HANDLER
-// =========================
+// ===============================
 app.use(notFound);
 
-// =========================
+// ===============================
 // ERROR HANDLER
-// =========================
+// ===============================
 app.use(errorHandler);
 
 export default app;
