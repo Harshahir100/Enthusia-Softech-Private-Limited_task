@@ -16,7 +16,7 @@ const initialize = async () => {
 
       await connectDB();
 
-      console.log('✅ MongoDB connected');
+      console.log('✅ MongoDB connection ready');
 
       await ensureDefaultAdmin();
 
@@ -35,15 +35,12 @@ export default async function handler(req, res) {
 
     return app(req, res);
   } catch (error) {
-    console.error('❌ Database initialization failed:', error);
+    console.error('❌ Initialization error:', error);
 
     return res.status(500).json({
       success: false,
       message: 'Database connection failed',
-      error:
-        process.env.NODE_ENV === 'development'
-          ? error.message
-          : undefined,
+      error: error.message,
     });
   }
 }
