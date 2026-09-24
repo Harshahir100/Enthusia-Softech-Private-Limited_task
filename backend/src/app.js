@@ -5,20 +5,25 @@ import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
 
 import { env } from './config/env.js';
+import { connectDB } from './config/db.js';
 
 import authRoutes from './routes/authRoutes.js';
 import blogRoutes from './routes/blogRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 
-import { notFound, errorHandler } from './middleware/errorMiddleware.js';
+import {
+  notFound,
+  errorHandler,
+} from './middleware/errorMiddleware.js';
 
 const app = express();
 
 app.set('trust proxy', 1);
 
-// ===============================
+// =====================================
 // CORS
-// ===============================
+// =====================================
+
 const allowedOrigins = env.CLIENT_URL
   .split(',')
   .map((origin) => origin.trim())
@@ -27,7 +32,6 @@ const allowedOrigins = env.CLIENT_URL
 app.use(
   cors({
     origin: (origin, callback) => {
-      // Allow Postman / server-to-server requests
       if (!origin) {
         return callback(null, true);
       }
@@ -42,25 +46,35 @@ app.use(
   })
 );
 
-// ===============================
+// =====================================
 // SECURITY
-// ===============================
+// =====================================
+
 app.use(helmet());
 
-// ===============================
+// =====================================
 // BODY PARSER
-// ===============================
+// =====================================
+
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// ===============================
+// =====================================
 // LOGGER
-// ===============================
-app.use(morgan(env.NODE_ENV === 'development' ? 'dev' : 'combined'));
+// =====================================
 
-// ===============================
+app.use(
+  morgan(
+    env.NODE_ENV === 'development'
+      ? 'dev'
+      : 'combined'
+  )
+);
+
+// =====================================
 // RATE LIMIT
-// ===============================
+// =====================================
+
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 300,
@@ -70,9 +84,10 @@ const limiter = rateLimit({
 
 app.use('/api', limiter);
 
-// ===============================
-// ROOT ROUTE
-// ===============================
+// =====================================
+// ROOT
+// =====================================
+
 app.get('/', (req, res) => {
   res.status(200).json({
     success: true,
@@ -80,9 +95,10 @@ app.get('/', (req, res) => {
   });
 });
 
-// ===============================
-// HEALTH CHECK
-// ===============================
+// =====================================
+// HEALTH
+// =====================================
+
 app.get('/api/health', (req, res) => {
   res.status(200).json({
     success: true,
@@ -91,21 +107,49 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// ===============================
+// =====================================
+// DATABASE CONNECTION
+// IMPORTANT FOR VERCEL
+// =====================================
+
+app.use('/api', async (req, res, next) => {
+  try {
+    await connectDB();
+    next();
+  } catch (error) {
+    console.error(
+      '❌ Database middleware error:',
+      error.message
+    );
+
+    res.status(500).json({
+      success: false,
+      message: 'Database connection failed',
+      error: error.message,
+    });
+  }
+});
+
+// =====================================
 // API ROUTES
-// ===============================
+// =====================================
+
 app.use('/api/auth', authRoutes);
+
 app.use('/api/blogs', blogRoutes);
+
 app.use('/api/admin', adminRoutes);
 
-// ===============================
-// 404 HANDLER
-// ===============================
+// =====================================
+// 404
+// =====================================
+
 app.use(notFound);
 
-// ===============================
+// =====================================
 // ERROR HANDLER
-// ===============================
+// =====================================
+
 app.use(errorHandler);
 
 export default app;
