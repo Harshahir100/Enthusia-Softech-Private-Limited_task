@@ -3,16 +3,22 @@ import { connectDB } from './config/db.js';
 import { env } from './config/env.js';
 import { ensureDefaultAdmin } from './utils/ensureAdmin.js';
 
-const start = async () => {
+let bootstrapped = false;
+
+const bootstrap = async () => {
+  if (bootstrapped) return;
   await connectDB();
   await ensureDefaultAdmin();
-
-  app.listen(env.PORT, () => {
-    console.log(`🚀 Server running on port ${env.PORT} (${env.NODE_ENV})`);
-  });
+  bootstrapped = true;
 };
 
-start().catch((err) => {
-  console.error('❌ Fatal startup error:', err);
-  process.exit(1);
-});
+// Vercel: export handler, DO NOT call app.listen
+export default async (req, res) => {
+  try {
+    await bootstrap();
+    return app(req, res);
+  } catch (err) {
+    console.error('❌ Bootstrap failed:', err);
+    res.status(500).json({ success: false, message: 'Server bootstrap failed' });
+  }
+};
