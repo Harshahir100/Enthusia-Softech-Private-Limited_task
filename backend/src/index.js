@@ -3,21 +3,28 @@ import { connectDB } from './config/db.js';
 import { ensureDefaultAdmin } from './utils/ensureAdmin.js';
 
 let initialized = false;
+let initPromise = null;
 
 const initialize = async () => {
   if (initialized) return;
 
-  console.log('🚀 Initializing application...');
+  if (!initPromise) {
+    initPromise = (async () => {
+      console.log('🚀 Initializing application...');
 
-  await connectDB();
+      await connectDB();
 
-  console.log('✅ Database connection ready');
+      console.log('✅ Database ready');
 
-  await ensureDefaultAdmin();
+      await ensureDefaultAdmin();
 
-  console.log('✅ Default admin ensured');
+      console.log('✅ Default admin ensured');
 
-  initialized = true;
+      initialized = true;
+    })();
+  }
+
+  await initPromise;
 };
 
 export default async function handler(req, res) {
